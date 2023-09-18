@@ -12,6 +12,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,7 +37,6 @@ public class CrawlServiceImpl implements CrawlService{
         }
 
         String id = generateId();
-
 
         Thread crawlThread = new Thread(() -> {
 
@@ -89,7 +89,34 @@ public class CrawlServiceImpl implements CrawlService{
 
     private void crawler(String url, String id, String keyword, Set<String> visitedLinks) throws IOException {
 
-        Set<String> linksHelper = new HashSet<>();
+        Set<String> linksHelper;
+
+        String html = loadHTMLPage(url);
+
+        if(html.contains(keyword))
+            crawlMap.get(id).getUrls().add(url);
+
+        linksHelper = linkExtractor(html, visitedLinks);
+
+        for(String link : linksHelper)
+            crawler(link, id, keyword, visitedLinks);
+
+    }
+
+    private Set<String> linkExtractor(String html, Set<String> visitedLinks) {
+
+        HTMLLinkExtractor htmlLinkExtractor = new HTMLLinkExtractor();
+        Set<String> extractedLinks = htmlLinkExtractor.grabHTMLLinks(html, BASE_URL);
+
+        extractedLinks.removeIf(visitedLinks::contains);
+
+        visitedLinks.addAll(extractedLinks);
+
+        return extractedLinks;
+
+    }
+
+    private String loadHTMLPage(String url) throws IOException {
 
         URL obj = new URL(url);
         HttpURLConnection con = (HttpURLConnection) obj.openConnection();
@@ -103,25 +130,8 @@ public class CrawlServiceImpl implements CrawlService{
             response.append(inputLine);
         }
         in.close();
-        String html = response.toString();
-        if(html.contains(keyword))
-            crawlMap.get(id).getUrls().add(url);
-        linksHelper = linkExtractor(html, visitedLinks);
-        for(String link : linksHelper)
-            crawler(link, id, keyword, visitedLinks);
 
-    }
-
-    private Set<String> linkExtractor(String html, Set<String> visitedLinks) {
-
-        HTMLLinkExtractor htmlLinkExtractor = new HTMLLinkExtractor();
-        Set<String> extractedLinks = htmlLinkExtractor.grabHTMLLinks(html, BASE_URL);
-
-        extractedLinks.removeIf(element -> visitedLinks.contains(element));
-
-        visitedLinks.addAll(extractedLinks);
-
-        return extractedLinks;
+        return response.toString();
 
     }
 

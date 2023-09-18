@@ -47,6 +47,13 @@ public class Main {
 
         });
 
+        exception(RuntimeException.class, (exception, req, res)->{
+
+            res.type("application/json");
+            res.status(500);
+            res.body(new Gson().toJson(new ExceptionResponse(500, "Error while crawling the keyword")));
+
+        });
     }
 
 }
